@@ -1,0 +1,27 @@
+name: dylib
+on: [workflow_dispatch]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: sdk
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang lld
+          git clone --depth 1 https://github.com/theos/sdks.git /tmp/sdks
+      - name: build
+        run: |
+          set -e
+          SDK=$(ls -d /tmp/sdks/iPhoneOS*.sdk | sort -V | tail -1)
+          clang -fuse-ld=lld -target arm64-apple-ios15.0 -isysroot "$SDK" -dynamiclib \
+            -fobjc-arc -fblocks -O2 \
+            -Wl,-undefined,dynamic_lookup \
+            -framework UIKit -framework Foundation -framework QuartzCore -framework IOKit \
+            -install_name @executable_path/BSVX.dylib \
+            -o BSVX.dylib Tweak.m BSVision.m BSHUD.m BSPanel.m BSConfig.m
+          test -f BSVX.dylib
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BSVX-dylib
+          path: BSVX.dylib
